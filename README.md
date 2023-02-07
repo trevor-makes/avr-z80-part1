@@ -157,18 +157,16 @@ Z80 assembly listing
 
 ```
  // for (char *ptr = 0x100; ...; ...)
- LD HL,$100
- JR test0
+ LD HL,$FF // following INC makes $100
 next:
  // for (...; ...; ++ptr)
  INC HL
-test0:
  // for (...; *ptr != 0; ...)
- XOR A // A = 0
+ LD A,0
  CP A,(HL)
- JR NZ,not0
+ JR NZ,body
  HALT
-not0:
+body:
  // if ('z' < *ptr) continue;
  LD A,'z'
  CP A,(HL)
@@ -212,8 +210,8 @@ Copy-paste to import machine code and decypher message:
 
 ```
 import
-:20000000210001180123AFBE2001763E7ABE38F57EFE6E3805D60D7718EBFE613805C60DE8
-:1B0020007718E23E5ABE38DD7EFE4E3805D60D7718D3FE4138CFC60D7718CA2B
+:2000000021FF00233E00BE2001763E7ABE38F47EFE6E3805D60D7718EAFE613805C60D77FF
+:1A00200018E13E5ABE38DC7EFE4E3805D60D7718D2FE4138CEC60D7718C9A8
 :00000001FF
 set $100 "Lbh'er njrfbzr!" 0
 run
@@ -223,11 +221,10 @@ hex $100
 Copy-paste to disassemble imported machine code:
 
 ```
-label test0 $0006
-label next $0005
-label not0 $000B
-label skip1 $001A
-label skip2 $0023
-label skip3 $0032
-dasm 0 $3b
+label next $0003
+label body $000A
+label skip1 $0019
+label skip2 $0022
+label skip3 $0031
+dasm 0 $3a
 ```
