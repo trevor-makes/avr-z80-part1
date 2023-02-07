@@ -171,37 +171,30 @@ body:
  LD A,'z'
  CP A,(HL)
  JR C,next
- // if (*ptr >= 'n') { *ptr -= 13; continue; }
+ // else if (*ptr >= 'n') *ptr -= 13;
  LD A,(HL)
  CP A,'n'
- JR C,skip1
- SUB A,13
- LD (HL),A
- JR next
-skip1:
- // if (*ptr >= 'a') { *ptr += 13; continue; }
+ JR NC,dosub
+ // else if (*ptr >= 'a') *ptr += 13;
  CP A,'a'
- JR C,skip2
- ADD A,13
- LD (HL),A
- JR next
-skip2:
- // if ('Z' < *ptr) continue;
+ JR NC,doadd
+ // else if ('Z' < *ptr) continue;
  LD A,'Z'
  CP A,(HL)
  JR C,next
- // if (*ptr >= 'N') { *ptr -= 13; continue; }
+ // else if (*ptr >= 'N') *ptr -= 13;
  LD A,(HL)
  CP A,'N'
- JR C,skip3
- SUB A,13
- LD (HL),A
- JR next
-skip3:
- // if (*ptr >= 'A') { *ptr += 13; continue; }
+ JR NC,dosub
+ // else if (*ptr >= 'A') *ptr += 13;
  CP A,'A'
  JR C,next
+doadd:
  ADD A,13
+ LD (HL),A
+ JR next
+dosub:
+ SUB A,13
  LD (HL),A
  JR next
 ```
@@ -210,8 +203,8 @@ Copy-paste to import machine code and decypher message:
 
 ```
 import
-:2000000021FF00233E00BE2001763E7ABE38F47EFE6E3805D60D7718EAFE613805C60D77FF
-:1A00200018E13E5ABE38DC7EFE4E3805D60D7718D2FE4138CEC60D7718C9A8
+:2000000021FF00233E00BE2001763E7ABE38F47EFE6E3017FE61300E3E5ABE38E67EFE4E5C
+:100020003009FE4138DDC60D7718D8D60D7718D3C4
 :00000001FF
 set $100 "Lbh'er njrfbzr!" 0
 run
@@ -223,8 +216,7 @@ Copy-paste to disassemble imported machine code:
 ```
 label next $0003
 label body $000A
-label skip1 $0019
-label skip2 $0022
-label skip3 $0031
+label add13 $0026
+label sub13 $002B
 dasm 0 $3a
 ```
