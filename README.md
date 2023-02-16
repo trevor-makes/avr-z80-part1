@@ -6,13 +6,17 @@
 
 Check out these YouTube videos!
 
-- [Coding and breadboarding tutorial]()
+- [Coding and breadboarding tutorial](https://www.youtube.com/watch?v=A0VpPRWrqHc)
 
-![](images/breadboard.jpg)
+![](images/z80-front.jpg)
+
+![](images/z80-side.jpg)
 
 ## Assembling the circuit
 
-![](images/Schematic.png)
+![](images/wiring-arduino.png)
+
+![](images/wiring-sram-z80.png)
 
 ## Building the software
 
@@ -199,7 +203,7 @@ sub13:
  JR next
 ```
 
-Copy-paste to import machine code and decypher message:
+Copy-paste to import machine code and decipher message:
 
 ```
 import

@@ -6,8 +6,6 @@
 #include "core/mon.hpp"
 #include "core/mon/z80.hpp"
 
-#include <Arduino.h>
-
 using core::io::ActiveLow;
 using core::io::ActiveHigh;
 using core::io::BitExtend;
