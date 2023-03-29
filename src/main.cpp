@@ -29,7 +29,7 @@ CORE_PORT(D)
 //        Data 6 - D6 | Arduino | C3 - Bus Read Enable (active low)
 //        Data 7 - D7 |   NANO  | C2 - Bus Write Enable (active low)
 //        Data 0 - B0 |         | C1 - Z80 RESET
-//        Data 1 - B1 |         | C0 - Z80 INT
+//        Data 1 - B1 |         | C0 - Z80 BUSREQ
 //        Data 2 - B2 |   ___   | x
 //        Data 3 - B3 |  |USB|  | x
 //             * - B4 |__|___|__| B5 - Z80 HALT
@@ -51,7 +51,7 @@ using ReadEnable = ActiveLow<PortC::Bit<3>>;
 using WriteEnable = ActiveLow<PortC::Bit<2>>;
 
 using Z80Reset = ActiveLow<PortC::Bit<1>>;
-using Z80Int = ActiveLow<PortC::Bit<0>>;
+using Z80BusReq = ActiveLow<PortC::Bit<0>>;
 using Z80Halt = ActiveLow<PortB::Bit<5>>;
 
 struct Z80Clock {
@@ -60,12 +60,14 @@ struct Z80Clock {
   CORE_REG(TCCR2B)
   CORE_REG(OCR2A)
   CORE_REG(OCR2B)
+  CORE_REG(TIFR2)
 
   // Aliases for Timer2 bitfields
   using RegCOM2B = RightAlign<RegTCCR2A::Mask<0x30>>;
   using RegCS2 = RegTCCR2B::Mask<0x07>;
   using RegWGM2 = BitExtend<RegTCCR2B::Bit<WGM22>, RegTCCR2A::Mask<0x03>>;
   using RegOC2B = PortD::Bit<3>;
+  using RegOCF2B = RegTIFR2::Bit<OCF2B>;
 
   static void config() {
     RegWGM2::write(2); // select CTC mode
@@ -74,6 +76,18 @@ struct Z80Clock {
     RegOCR2A::write(0); // count that resets timer, the clock period
     RegOCR2B::write(0); // count that toggles OC2B (must be <= OCR2A)
     RegCS2::write(1); // 0 to stop, 1 for no prescaler, 2 for /8, etc
+  }
+
+  template <uint8_t N = 1>
+  static void wait_ticks() {
+    if (N > 0) {
+      // Wait two toggles per clock pulse
+      RegOCF2B::set(); // clear compare flag
+      while (RegOCF2B::is_clear()) {} // wait for clock toggle
+      RegOCF2B::set(); // clear compare flag
+      while (RegOCF2B::is_clear()) {} // wait for clock toggle
+      wait_ticks<N - 1>();
+    }
   }
 
   static void start() { RegCS2::write(1); }
@@ -119,11 +133,12 @@ struct API : core::mon::Base<API> {
 };
 
 void setup() {
-  // Start with Z80 in RESET state
-  Z80Reset::config_output();
-  Z80Reset::enable();
+  // Start with Z80 in BUSREQ state to keep RS and WR floating
+  // Previously used the RESET state, but this drives RS and WR high instead
+  Z80BusReq::config_output();
+  Z80BusReq::enable();
 
-  Z80Int::config_output();
+  Z80Reset::config_output();
   Z80Halt::config_input();
   Z80Clock::config();
 
@@ -145,9 +160,14 @@ void set_baud(Args args) {
 
 void run_until_halt(Args args) {
   Bus::config_float();
-  Z80Reset::disable();
-  while (!Z80Halt::is_enabled()) {}
+  // Hold RESET low for 3 clock pulses
   Z80Reset::enable();
+  Z80Clock::wait_ticks<3>();
+  Z80Reset::disable();
+  // Release BUSREQ to let program run
+  Z80BusReq::disable();
+  while (!Z80Halt::is_enabled()) {}
+  Z80BusReq::enable();
 }
 
 void loop() {
