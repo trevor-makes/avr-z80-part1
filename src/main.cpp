@@ -70,22 +70,20 @@ struct Z80Clock {
   using RegOCF2B = RegTIFR2::Bit<OCF2B>;
 
   static void config() {
-    RegWGM2::write(2); // select CTC mode
-    RegCOM2B::write(1); // toggle OC2B on compare match
+    RegWGM2::write(7); // select fast PWM mode w/ OCR2A top
+    RegCOM2B::write(3); // clear OC2B at OCR2A, set OC2B at OCR2B
     RegOC2B::config_output(); // GPIO must be in output mode
-    RegOCR2A::write(0); // count that resets timer, the clock period
+    RegOCR2A::write(1); // count that resets timer, the clock period
     RegOCR2B::write(0); // count that toggles OC2B (must be <= OCR2A)
     RegCS2::write(1); // 0 to stop, 1 for no prescaler, 2 for /8, etc
   }
 
+  // Wait for N positive clock edges
   template <uint8_t N = 1>
   static void wait_ticks() {
     if (N > 0) {
-      // Wait two toggles per clock pulse
       RegOCF2B::set(); // clear compare flag
-      while (RegOCF2B::is_clear()) {} // wait for clock toggle
-      RegOCF2B::set(); // clear compare flag
-      while (RegOCF2B::is_clear()) {} // wait for clock toggle
+      while (RegOCF2B::is_clear()) {} // wait for clock edge
       wait_ticks<N - 1>();
     }
   }
