@@ -14,9 +14,9 @@ Check out these YouTube videos!
 
 ## Assembling the circuit
 
-![](images/wiring-arduino.png)
+![](images/wiring-arduino-2.png)
 
-![](images/wiring-sram-z80.png)
+![](images/wiring-sram-z80-2.png)
 
 ## Building the software
 
