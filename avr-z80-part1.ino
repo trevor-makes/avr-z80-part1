@@ -1,5 +1,6 @@
 // Copyright (c) 2023 Trevor Makes
 
+#include <core.h>
 #include "core/io.hpp"
 #include "core/io/bus.hpp"
 #include "core/cli.hpp"
