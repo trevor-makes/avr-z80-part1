@@ -169,6 +169,58 @@ void run_until_halt(Args args) {
   Z80BusReq::enable();
 }
 
+// I/O register memory map
+const uint16_t REGISTERS_ADDR = 0x7F7A;
+const uint16_t OUT_BUF_ADDR   = 0x7F80;
+struct __attribute__((packed)) {
+  uint8_t yield_flg;  // 0x7F7A
+  uint8_t read_reg;   // 0x7F7B
+  uint16_t clock_reg; // 0x7F7C
+  uint16_t out_ptr;   // 0x7F7E
+} registers;
+
+void run_bios(Args args) {
+  registers.yield_flg = 0;
+  registers.read_reg = 0xFF;
+  registers.out_ptr = OUT_BUF_ADDR;
+
+  for (;;) {
+    // Write I/O registers
+    Bus::config_write();
+    for (uint8_t i = 0; i < sizeof(registers); ++i) {
+      Bus::write_bus(REGISTERS_ADDR + i, ((uint8_t*)&registers)[i]);
+    }
+    Bus::flush_write();
+
+    // Run Z80 and wait for HALT
+    run_until_halt({});
+
+    // Read I/O registers
+    Bus::config_read();
+    for (uint8_t i = 0; i < sizeof(registers); ++i) {
+      ((uint8_t*)&registers)[i] = Bus::read_bus(REGISTERS_ADDR + i);
+    }
+
+    // Flush output buffer
+    for (uint16_t ptr = OUT_BUF_ADDR; ptr < registers.out_ptr; ++ptr) {
+      serialEx.write(Bus::read_bus(ptr));
+    }
+    registers.out_ptr = OUT_BUF_ADDR;
+
+    // Terminate when stack register cleared
+    if (registers.yield_flg == 0) {
+      break;
+    }
+
+    // Read input character
+    if (registers.read_reg == 0xFF) {
+      registers.read_reg = uint8_t(serialEx.read());
+    }
+
+    registers.clock_reg = millis();
+  }
+}
+
 void loop() {
   static const core::cli::Command commands[] = {
     { "baud", set_baud },
@@ -177,6 +229,7 @@ void loop() {
     { "dasm", core::mon::z80::cmd_dasm<API> },
     { "label", core::mon::cmd_label<API> },
     { "run", run_until_halt },
+    { "bios", run_bios },
     // Memory monitor commands
     { "hex", core::mon::cmd_hex<API> },
     { "set", core::mon::cmd_set<API> },
