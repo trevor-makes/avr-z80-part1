@@ -170,13 +170,13 @@ void run_until_halt(Args args) {
 }
 
 // I/O register memory map
-const uint16_t REGISTERS_ADDR = 0x7F7A;
-const uint16_t OUT_BUF_ADDR   = 0x7F80;
+const uint16_t REGISTERS_ADDR = 0x00DA;
+const uint16_t OUT_BUF_ADDR   = 0x00E0;
 struct __attribute__((packed)) {
-  uint8_t yield_flg;  // 0x7F7A
-  uint8_t read_reg;   // 0x7F7B
-  uint16_t clock_reg; // 0x7F7C
-  uint16_t out_ptr;   // 0x7F7E
+  uint8_t yield_flg;  // 0x00DA
+  uint8_t read_reg;   // 0x00DB
+  uint16_t clock_reg; // 0x00DC
+  uint16_t out_ptr;   // 0x00DE
 } registers;
 
 void run_bios(Args args) {

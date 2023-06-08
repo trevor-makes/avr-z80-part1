@@ -8,29 +8,24 @@
 
 _init = 0x100 ; defined in crt0
 
-; TODO use end of header segment (up to 0x100) for BIOS registers?
-; TODO use .org/.blkb/.blkw instead of =?
-;.org 0x747A
-;_yield_flg: .blkb 1
-;_read_reg: .blkb 1
-;_clock_reg: .blkw 1
-;.assume _write_buf - 0x7F80
-;.assume _write_end - 0x7F00
-_yield_flg = 0x7F7A
-_read_reg  = 0x7F7B
-_clock_reg = 0x7F7C
-_write_ptr = 0x7F7E
-_write_buf = 0x7F80
-_write_end = 0x7F00
-
 	.area	_HEADER (ABS)
+
+	.org	0xDA
+; memory locations shared between Arduino and Z80
+_yield_flg:	.ds 1	; 0xDA
+_read_reg:	.ds 1	; 0xDB
+_clock_reg:	.ds 2	; 0xDC
+_write_ptr:	.ds 2	; 0xDE
+_write_buf:	.ds 32	; 0xE0
+_write_end = .	; 0x100
 
 	.org 	0
 	; if yield flag is not 0, resume from previous halt
 	ld	A, (_yield_flg)
 	or	A
-	; TODO should this restore AF from flush? if so, have to branch across 0x08 vector
+	; TODO should this restore AF from flush?
 	ret	NZ
+	; otherwise jump to init vector
 	jp _init
 
 	.org	0x08
@@ -56,9 +51,7 @@ _flush::
 ; return uint16 in DE
 _millis::
 	; get fresh millis from Arduino and return it
-	;call	_flush
-	rst	0x10
-	;ld	HL, (_clock_reg) ;__z88dk_fastcall
+	rst	0x10 ; call	_flush
 	ld	DE, (_clock_reg)
 	ret
 
@@ -75,7 +68,6 @@ _getchar::
 
 	ld	A, (HL)
 	ld	(HL), #0xFF	; read_reg = -1
-	;ld	L, A ;__z88dk_fastcall
 	ret
 
 	.org	0x30
@@ -83,7 +75,6 @@ _getchar::
 ; char out in A
 _putchar::
 	; *write_ptr++ = out
-	;ld	A, L ;__z88dk_fastcall
 	ld	HL, (_write_ptr)
 	ld	(HL), A
 	inc	HL
@@ -107,9 +98,7 @@ _putstr::
 
 	; putchar(*out++)
 	push	HL
-	ld	L, (HL)
-	;call	_putchar
-	rst 0x30
+	rst 0x30 ; call	_putchar
 	pop HL
 	inc HL
 
