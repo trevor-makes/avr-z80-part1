@@ -203,7 +203,9 @@ void run_bios(Args args) {
 
     // Flush output buffer
     for (uint16_t ptr = OUT_BUF_ADDR; ptr < registers.out_ptr; ++ptr) {
-      serialEx.write(Bus::read_bus(ptr));
+      uint8_t c = Bus::read_bus(ptr);
+      if (c == '\n') serialEx.write('\r'); // LF -> CRLF
+      serialEx.write(c);
     }
     registers.out_ptr = OUT_BUF_ADDR;
 

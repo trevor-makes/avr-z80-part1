@@ -9,14 +9,14 @@ void main() {
         char c = getchar();
         if (c == 0xFF) {
             continue;
-        } else if (c == '\n' || c == '\r') {
+        } else if (c == '\n') {
             break;
         }
 
         putchar(c);
         *name_ptr++ = c;
     }
-    putstr("\r\n");
+    putchar('\n');
     *name_ptr = '\0';
 
     uint16_t last_t = millis();
@@ -30,6 +30,6 @@ void main() {
 
         putstr("Hello, ");
         putstr(name);
-        putstr("\r\n");
+        putchar('\n');
     }
 }
