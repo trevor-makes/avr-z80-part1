@@ -23,3 +23,6 @@ void putchar(char out) __sdcccall(1);
 // Write null-terminated string to output buffer
 // Doesn't append '\n' or return int like puts
 void putstr(const char* out) __sdcccall(1);
+
+// Write 2-digit packed BCD
+void putbcd(uint8_t out) __sdcccall(1);

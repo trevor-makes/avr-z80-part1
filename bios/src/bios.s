@@ -5,6 +5,7 @@
 	.globl	_getchar
 	.globl	_putchar
 	.globl	_putstr
+	.globl	_putbcd
 
 _init = 0x100 ; defined in crt0
 
@@ -23,7 +24,6 @@ _write_end = .	; 0x100
 	; if yield flag is not 0, resume from previous halt
 	ld	A, (_yield_flg)
 	or	A
-	; TODO should this restore AF from flush?
 	ret	NZ
 	; otherwise jump to init vector
 	jp _init
@@ -103,6 +103,27 @@ _putstr::
 	inc HL
 
 	jr	_putstr
+
+; void putbcd(uint8_t out) __sdcccall(1)
+; uint8 out in A
+_putbcd::
+	; tmp = out
+	ld	HL, #bcdtmp
+	ld	(HL), A
+
+	; putchar('0' | tmp >> 4)
+	ld	A, #'0' ; 0x30
+	rld
+	rst 0x30 ; call _putchar
+
+	; putchar('0' | tmp & 0xf)
+	ld	HL, #bcdtmp
+	ld	A, #'0' ; 0x30
+	rld
+	rst 0x30 ; call _putchar
+
+	ret
+bcdtmp: .ds 1
 
 ; TODO how much other crap can we cram in page 0? priority bcd and rand, maybe draw?
 ; TODO what about debug break vector?
