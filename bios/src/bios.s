@@ -6,6 +6,8 @@
 	.globl	_putchar
 	.globl	_putstr
 	.globl	_putbcd
+	.globl	_srand
+	.globl	_rand
 
 _init = 0x100 ; defined in crt0
 
@@ -124,6 +126,38 @@ _putbcd::
 
 	ret
 bcdtmp: .ds 1
+
+; void srand(uint16_t seed) __z88dk_fastcall
+; take seed in HL
+_srand::
+	set 7, H	; seed |= 0x8000
+	ld (_rand+1), HL
+	ret
+
+; uint16_t rand() __z88dk_fastcall
+; http://www.retroprogramming.com/2017/07/xorshift-pseudorandom-numbers-in-z80.html
+; return in HL
+_rand::
+	; NOTE rand and srand keep state in the following parameter
+	ld hl,#1
+
+	ld a,h
+	rra
+	ld a,l
+	rra
+	xor h
+	ld h,a
+	ld a,l
+	rra
+	ld a,h
+	rra
+	xor l
+	ld l,a
+	xor h
+	ld h,a
+
+	ld (_rand+1),hl
+	ret
 
 ; TODO how much other crap can we cram in page 0? priority bcd and rand, maybe draw?
 ; TODO what about debug break vector?

@@ -26,3 +26,10 @@ void putstr(const char* out) __sdcccall(1);
 
 // Write 2-digit packed BCD
 void putbcd(uint8_t out) __sdcccall(1);
+
+// Set seed for rand()
+void srand(uint16_t seed) __sdcccall(1);
+
+// 16-bit xorshift pseudorandom number generator
+// NOTE using z88dk_fastcall to return in HL instead of DE
+uint16_t rand() __z88dk_fastcall;
