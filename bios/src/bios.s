@@ -90,7 +90,7 @@ _putchar::
 	ret	NZ
 	jr	_flush
 
-; void print(char* out) __sdcccall(1)
+; void putstr(char* out) __sdcccall(1)
 ; char* out in HL
 _putstr::
 	; while (*out != 0)

@@ -2,17 +2,14 @@
 all: bios.ihx example.ihx randbcd.ihx
 
 bios.ihx: bin/bios.rel
-	sdldz80 -nmw -i $@ $^
+	sdldz80 -n -i $@ $^
 
-example.ihx: bin/bios.rel bin/init.rel bin/example.rel
-	sdldz80 -nmw -b _CODE=0x100 -i $@ $^
-
-randbcd.ihx: bin/bios.rel bin/init.rel bin/randbcd.rel
+%.ihx: bin/bios.rel bin/init.rel bin/%.rel
 	sdldz80 -nmw -b _CODE=0x100 -i $@ $^
 
 bin/%.rel: src/%.s
 	mkdir -p $(@D)
-	sdasz80 -o $@ $<
+	sdasz80 -ol $@ $<
 
 bin/%.rel: src/%.c
 	mkdir -p $(@D)
