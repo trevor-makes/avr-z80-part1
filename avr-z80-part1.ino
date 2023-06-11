@@ -211,37 +211,36 @@ void bios_loop() {
       return;
     } else if (registers.yield_flg == 2) {
       // Read registers pushed on the Z80 stack
+      auto print = [](char c){serialEx.print(c);};
+      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
       uint16_t sp = Bus::read_bus(STACK_ADDR) | (Bus::read_bus(STACK_ADDR + 1) << 8);
       uint16_t pc = Bus::read_bus(sp + 2) | (Bus::read_bus(sp + 3) << 8);
-      uint8_t a = Bus::read_bus(sp + 1);
-      uint8_t f = Bus::read_bus(sp);
-      uint16_t hl = Bus::read_bus(sp - 2) | (Bus::read_bus(sp - 1) << 8);
-      uint16_t bc = Bus::read_bus(sp - 4) | (Bus::read_bus(sp - 3) << 8);
-      uint16_t de = Bus::read_bus(sp - 6) | (Bus::read_bus(sp - 5) << 8);
-      uint8_t a2 = Bus::read_bus(sp - 7);
-      uint8_t f2 = Bus::read_bus(sp - 8);
-      uint16_t hl2 = Bus::read_bus(sp - 10) | (Bus::read_bus(sp - 9) << 8);
-      uint16_t bc2 = Bus::read_bus(sp - 12) | (Bus::read_bus(sp - 11) << 8);
-      uint16_t de2 = Bus::read_bus(sp - 14) | (Bus::read_bus(sp - 13) << 8);
-      uint16_t ix = Bus::read_bus(sp - 16) | (Bus::read_bus(sp - 15) << 8);
-      uint16_t iy = Bus::read_bus(sp - 18) | (Bus::read_bus(sp - 17) << 8);
-      // Print registers
-      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
-      auto print = [](char c){serialEx.print(c);};
       core::mon::format_hex16(print, pc); print(' ');
       core::mon::format_hex16(print, sp + 4); print(' ');
+      uint8_t f = Bus::read_bus(sp);
       core::mon::format_bin8(print, f); print(' ');
+      uint8_t a = Bus::read_bus(sp + 1);
       core::mon::format_hex8(print, a); print(' ');
+      uint16_t hl = Bus::read_bus(sp - 2) | (Bus::read_bus(sp - 1) << 8);
       core::mon::format_hex16(print, hl); print(' ');
+      uint16_t bc = Bus::read_bus(sp - 4) | (Bus::read_bus(sp - 3) << 8);
       core::mon::format_hex16(print, bc); print(' ');
+      uint16_t de = Bus::read_bus(sp - 6) | (Bus::read_bus(sp - 5) << 8);
       core::mon::format_hex16(print, de); print(' ');
+      uint8_t f2 = Bus::read_bus(sp - 8);
       core::mon::format_bin8(print, f2); print(' ');
+      uint8_t a2 = Bus::read_bus(sp - 7);
       core::mon::format_hex8(print, a2); print(' ');
+      uint16_t hl2 = Bus::read_bus(sp - 10) | (Bus::read_bus(sp - 9) << 8);
       core::mon::format_hex16(print, hl2); print(' ');
+      uint16_t bc2 = Bus::read_bus(sp - 12) | (Bus::read_bus(sp - 11) << 8);
       core::mon::format_hex16(print, bc2); print(' ');
+      uint16_t de2 = Bus::read_bus(sp - 14) | (Bus::read_bus(sp - 13) << 8);
       core::mon::format_hex16(print, de2); print(' ');
+      uint16_t ix = Bus::read_bus(sp - 16) | (Bus::read_bus(sp - 15) << 8);
       core::mon::format_hex16(print, ix); print(' ');
-      core::mon::format_hex16(print, iy); print(' ');
+      uint16_t iy = Bus::read_bus(sp - 18) | (Bus::read_bus(sp - 17) << 8);
+      core::mon::format_hex16(print, iy);
       serialEx.println();
       return;
     }
