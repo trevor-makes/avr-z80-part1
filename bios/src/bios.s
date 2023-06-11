@@ -46,9 +46,9 @@ _yield::
 	.org	0x10
 ; void break()
 _break::
+	push	AF
 	ld	(_stack_ptr), SP
-	push	BC
-	push	DE
+	push	HL
 	jr	break_ext
 
 	.org	0x18
@@ -107,34 +107,22 @@ _putchar::
 
 ; continued from _break reset vector above
 break_ext:
-	push	HL
-	push	AF
-	exx
-	ex	AF, AF'
 	push	BC
 	push	DE
-	push	HL
+	exx
+	ex	AF, AF'
 	push	AF
+	push	HL
+	push	BC
+	push	DE
 	exx
 	ex	AF, AF'
 	push	IX
 	push	IY
 	ld	A, #YIELD_BREAK
 	rst	0x08
-	pop	IY
-	pop	IX
-	exx
-	ex	AF, AF'
+	ld	SP, (_stack_ptr)
 	pop	AF
-	pop	HL
-	pop	DE
-	pop	BC
-	exx
-	ex	AF, AF'
-	pop	AF
-	pop	HL
-	pop	DE
-	pop	BC
 	ret
 
 ; void putstr(char* out) __sdcccall(1)
