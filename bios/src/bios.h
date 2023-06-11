@@ -2,11 +2,11 @@
 
 #include <stdint.h>
 
-// TODO maybe replace exit/flush/break with a single sync call that takes code in A
+// TODO make this an inline xor A/rst 8?
 void exit();
 
-// Flush output buffer
-void flush();
+// Yield to Arduino: 0=exit, 1=flush, 2=break
+void yield(uint8_t code) __sdcccall(1);
 
 // Return elapsed time in milliseconds
 uint16_t millis() __sdcccall(1);

@@ -1,6 +1,5 @@
 	.module	bios
-	.globl	_exit
-	.globl	_flush
+	.globl	_yield
 	.globl	_millis
 	.globl	_getchar
 	.globl	_putchar
@@ -22,7 +21,7 @@ _write_ptr:	.ds 2	; 0xDE
 _write_buf:	.ds 32	; 0xE0
 _write_end = .	; 0x100
 
-	.org 	0
+	.org 	0x00
 	; if yield flag is not 0, resume from previous halt
 	ld	A, (_yield_flg)
 	or	A
@@ -31,48 +30,51 @@ _write_end = .	; 0x100
 	jp _init
 
 	.org	0x08
-; void exit()
-; TODO take int param?
-_exit::
-	; clear yield flag and halt to terminate
-	ld	A, #0 ;xor	A
+; void yield(uint8_t) __sdcccall(1)
+; takes code (0=exit, 1=flush, 2=break) in A
+_yield::
 	ld	(_yield_flg), A
 	halt
 
+	; TODO 4 unused bytes here
+
 	.org	0x10
-; void flush()
-_flush::
-	; set yield flag and halt to yield
-	; TODO need to push AF?
-	ld	A, #1
-	ld	(_yield_flg), A
-	halt
 
 	.org	0x18
 ; uint16_t millis() __sdcccall(1)
 ; return uint16 in DE
 _millis::
-	; get fresh millis from Arduino and return it
-	rst	0x10 ; call	_flush
+	; call yield(1) to get fresh millis from Arduino
+	ld	A, #1
+	rst	0x08
 	ld	DE, (_clock_reg)
 	ret
 
 	.org	0x20
 ; char getchar() __sdcccall(1)
 ; return char in A
+; TODO move out of rst vectors
 _getchar::
 	ld	HL, #_read_reg
 
-	; if (read_reg == -1) flush()
+	; if (read_reg == -1)
 	ld	A, (HL)
 	inc	A
-	call	Z, _flush
+	jr	NZ, skip_flush
+	; { yield(1) }
+	ld	A, #1
+	rst	0x08
 
+skip_flush:
 	ld	A, (HL)
 	ld	(HL), #0xFF	; read_reg = -1
 	ret
 
+	.org	0x28
+
 	.org	0x30
+
+	.org	0x38
 ; void putchar(char out) __sdcccall(1)
 ; char out in A
 _putchar::
@@ -82,13 +84,15 @@ _putchar::
 	inc	HL
 	ld	(_write_ptr), HL
 
-	; if (write_ptr != write_end) return else flush()
+	; if (write_ptr != write_end) return
 	; NOTE just comparing low byte since buf size is less than 256
 	; TODO assert write_end-write_buf <= 256
 	ld	A, #<_write_end
 	cp	L
 	ret	NZ
-	jr	_flush
+	; else yield(1)
+	ld	A, #1
+	jr	_yield
 
 ; void putstr(char* out) __sdcccall(1)
 ; char* out in HL
@@ -100,7 +104,7 @@ _putstr::
 
 	; putchar(*out++)
 	push	HL
-	rst 0x30 ; call	_putchar
+	rst 0x38 ; call	_putchar
 	pop HL
 	inc HL
 
@@ -116,13 +120,13 @@ _putbcd::
 	; putchar('0' | tmp >> 4)
 	ld	A, #'0' ; 0x30
 	rld
-	rst 0x30 ; call _putchar
+	rst 0x38 ; call _putchar
 
 	; putchar('0' | tmp & 0xf)
 	ld	HL, #bcdtmp
 	ld	A, #'0' ; 0x30
 	rld
-	rst 0x30 ; call _putchar
+	rst 0x38 ; call _putchar
 
 	ret
 bcdtmp: .ds 1
@@ -138,7 +142,7 @@ _srand::
 ; http://www.retroprogramming.com/2017/07/xorshift-pseudorandom-numbers-in-z80.html
 ; return in HL
 _rand::
-	; NOTE rand and srand keep state in the following parameter
+	; NOTE rand and srand keep state in the following instruction
 	ld hl,#1
 
 	ld a,h

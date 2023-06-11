@@ -58,7 +58,9 @@ init:
 	;; Initialise global variables
 	call	gsinit
 	call	_main
-	jp	_exit ; rst	0x08
+_exit:
+	xor	A	; A = 0
+	rst	0x08	; call _yield
 
 	.area	_GSINIT
 gsinit::
