@@ -173,12 +173,39 @@ void run_until_halt(Args args) {
 const uint16_t STACK_ADDR = 0x00D8;
 const uint16_t REGISTERS_ADDR = 0x00DA;
 const uint16_t OUT_BUF_ADDR   = 0x00E0;
+
+const uint8_t YIELD_EXIT = 0;
+const uint8_t YIELD_FLUSH = 1;
+const uint8_t YIELD_BREAK = 2;
+
 struct __attribute__((packed)) {
   uint8_t yield_flg;  // 0x00DA
   uint8_t read_reg;   // 0x00DB
   uint16_t clock_reg; // 0x00DC
   uint16_t out_ptr;   // 0x00DE
 } registers;
+
+void display_registers() {
+  // Read registers pushed on the Z80 stack
+  auto print = [](char c){serialEx.print(c);};
+  serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
+  uint16_t sp = Bus::read_bus(STACK_ADDR) | (Bus::read_bus(STACK_ADDR + 1) << 8);
+  core::mon::format_hex16(print, Bus::read_bus(sp + 3) << 8 | Bus::read_bus(sp + 2)); print(' '); // PC
+  core::mon::format_hex16(print, sp + 4); print(' '); // SP
+  core::mon::format_bin8(print, Bus::read_bus(sp)); print(' '); // F
+  core::mon::format_hex8(print, Bus::read_bus(sp + 1)); print(' '); // A
+  core::mon::format_hex16(print, Bus::read_bus(sp - 1) << 8 | Bus::read_bus(sp - 2)); print(' '); // HL
+  core::mon::format_hex16(print, Bus::read_bus(sp - 3) << 8 | Bus::read_bus(sp - 4)); print(' '); // BC
+  core::mon::format_hex16(print, Bus::read_bus(sp - 5) << 8 | Bus::read_bus(sp - 6)); print(' '); // DE
+  core::mon::format_bin8(print, Bus::read_bus(sp - 8)); print(' '); // F'
+  core::mon::format_hex8(print, Bus::read_bus(sp - 7)); print(' '); // A'
+  core::mon::format_hex16(print, Bus::read_bus(sp - 9) << 8 | Bus::read_bus(sp - 10)); print(' '); // HL'
+  core::mon::format_hex16(print, Bus::read_bus(sp - 11) << 8 | Bus::read_bus(sp - 12)); print(' '); // BC'
+  core::mon::format_hex16(print, Bus::read_bus(sp - 13) << 8 | Bus::read_bus(sp - 14)); print(' '); // DE'
+  core::mon::format_hex16(print, Bus::read_bus(sp - 15) << 8 | Bus::read_bus(sp - 16)); print(' '); // IX
+  core::mon::format_hex16(print, Bus::read_bus(sp - 17) << 8 | Bus::read_bus(sp - 18)); // IY
+  serialEx.println();
+}
 
 void bios_loop() {
   for (;;) {
@@ -206,29 +233,11 @@ void bios_loop() {
     }
     registers.out_ptr = OUT_BUF_ADDR;
 
-    // Terminate when stack register cleared
-    if (registers.yield_flg == 0) {
+    // Exit when yield parameter is exit or break
+    if (registers.yield_flg == YIELD_EXIT) {
       return;
-    } else if (registers.yield_flg == 2) {
-      // Read registers pushed on the Z80 stack
-      auto print = [](char c){serialEx.print(c);};
-      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
-      uint16_t sp = Bus::read_bus(STACK_ADDR) | (Bus::read_bus(STACK_ADDR + 1) << 8);
-      core::mon::format_hex16(print, Bus::read_bus(sp + 3) << 8 | Bus::read_bus(sp + 2)); print(' '); // PC
-      core::mon::format_hex16(print, sp + 4); print(' '); // SP
-      core::mon::format_bin8(print, Bus::read_bus(sp)); print(' '); // F
-      core::mon::format_hex8(print, Bus::read_bus(sp + 1)); print(' '); // A
-      core::mon::format_hex16(print, Bus::read_bus(sp - 1) << 8 | Bus::read_bus(sp - 2)); print(' '); // HL
-      core::mon::format_hex16(print, Bus::read_bus(sp - 3) << 8 | Bus::read_bus(sp - 4)); print(' '); // BC
-      core::mon::format_hex16(print, Bus::read_bus(sp - 5) << 8 | Bus::read_bus(sp - 6)); print(' '); // DE
-      core::mon::format_bin8(print, Bus::read_bus(sp - 8)); print(' '); // F'
-      core::mon::format_hex8(print, Bus::read_bus(sp - 7)); print(' '); // A'
-      core::mon::format_hex16(print, Bus::read_bus(sp - 9) << 8 | Bus::read_bus(sp - 10)); print(' '); // HL'
-      core::mon::format_hex16(print, Bus::read_bus(sp - 11) << 8 | Bus::read_bus(sp - 12)); print(' '); // BC'
-      core::mon::format_hex16(print, Bus::read_bus(sp - 13) << 8 | Bus::read_bus(sp - 14)); print(' '); // DE'
-      core::mon::format_hex16(print, Bus::read_bus(sp - 15) << 8 | Bus::read_bus(sp - 16)); print(' '); // IX
-      core::mon::format_hex16(print, Bus::read_bus(sp - 17) << 8 | Bus::read_bus(sp - 18)); // IY
-      serialEx.println();
+    } else if (registers.yield_flg == YIELD_BREAK) {
+      display_registers();
       return;
     }
 
@@ -243,14 +252,15 @@ void bios_loop() {
 }
 
 void run_bios(Args args) {
-  registers.yield_flg = 0;
+  // Reset BIOS registers
+  registers.yield_flg = YIELD_EXIT;
   registers.read_reg = 0xFF;
   registers.out_ptr = OUT_BUF_ADDR;
   bios_loop();
 }
 
 void resume_bios(Args args) {
-  if (registers.yield_flg != 2) {
+  if (registers.yield_flg != YIELD_BREAK) {
     serialEx.println(F("can only resume from break"));
     return;
   }
