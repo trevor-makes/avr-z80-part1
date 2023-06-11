@@ -170,6 +170,7 @@ void run_until_halt(Args args) {
 }
 
 // I/O register memory map
+const uint16_t STACK_ADDR = 0x00D8;
 const uint16_t REGISTERS_ADDR = 0x00DA;
 const uint16_t OUT_BUF_ADDR   = 0x00E0;
 struct __attribute__((packed)) {
@@ -179,11 +180,7 @@ struct __attribute__((packed)) {
   uint16_t out_ptr;   // 0x00DE
 } registers;
 
-void run_bios(Args args) {
-  registers.yield_flg = 0;
-  registers.read_reg = 0xFF;
-  registers.out_ptr = OUT_BUF_ADDR;
-
+void bios_loop() {
   for (;;) {
     // Write I/O registers
     Bus::config_write();
@@ -211,7 +208,34 @@ void run_bios(Args args) {
 
     // Terminate when stack register cleared
     if (registers.yield_flg == 0) {
-      break;
+      return;
+    } else if (registers.yield_flg == 2) {
+      // Read registers pushed on the Z80 stack
+      uint16_t sp = Bus::read_bus(STACK_ADDR) | (Bus::read_bus(STACK_ADDR + 1) << 8);
+      uint16_t pc = Bus::read_bus(sp) | (Bus::read_bus(sp + 1) << 8);
+      uint16_t bc = Bus::read_bus(sp - 2) | (Bus::read_bus(sp - 1) << 8);
+      uint16_t de = Bus::read_bus(sp - 4) | (Bus::read_bus(sp - 3) << 8);
+      uint16_t hl = Bus::read_bus(sp - 6) | (Bus::read_bus(sp - 5) << 8);
+      uint8_t a = Bus::read_bus(sp - 7);
+      uint8_t f = Bus::read_bus(sp - 8);
+      uint16_t ix = Bus::read_bus(sp - 10) | (Bus::read_bus(sp - 9) << 8);
+      uint16_t iy = Bus::read_bus(sp - 12) | (Bus::read_bus(sp - 11) << 8);
+      // Print registers
+      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   IX   IY"));
+      // TODO handle alternate registers
+      //serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
+      auto print = [](char c){serialEx.print(c);};
+      core::mon::format_hex16(print, pc); print(' ');
+      core::mon::format_hex16(print, sp + 2); print(' ');
+      core::mon::format_bin8(print, f); print(' ');
+      core::mon::format_hex8(print, a); print(' ');
+      core::mon::format_hex16(print, hl); print(' ');
+      core::mon::format_hex16(print, bc); print(' ');
+      core::mon::format_hex16(print, de); print(' ');
+      core::mon::format_hex16(print, ix); print(' ');
+      core::mon::format_hex16(print, iy); print(' ');
+      serialEx.println();
+      return;
     }
 
     // Read input character
@@ -219,8 +243,24 @@ void run_bios(Args args) {
       registers.read_reg = uint8_t(serialEx.read());
     }
 
+    // TODO pause Z80 time during break so it doesn't jump after resume 
     registers.clock_reg = millis();
   }
+}
+
+void run_bios(Args args) {
+  registers.yield_flg = 0;
+  registers.read_reg = 0xFF;
+  registers.out_ptr = OUT_BUF_ADDR;
+  bios_loop();
+}
+
+void resume_bios(Args args) {
+  if (registers.yield_flg != 2) {
+    serialEx.println(F("can only resume from break"));
+    return;
+  }
+  bios_loop();
 }
 
 void loop() {
@@ -232,6 +272,7 @@ void loop() {
     { "label", core::mon::cmd_label<API> },
     { "run", run_until_halt },
     { "bios", run_bios },
+    { "resume", resume_bios },
     // Memory monitor commands
     { "hex", core::mon::cmd_hex<API> },
     { "set", core::mon::cmd_set<API> },

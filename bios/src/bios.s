@@ -12,14 +12,19 @@ _init = 0x100 ; defined in crt0
 
 	.area	_HEADER (ABS)
 
-	.org	0xDA
+	.org	0xD8
 ; memory locations shared between Arduino and Z80
+_stack_ptr:	.ds 2	; 0xD8
 _yield_flg:	.ds 1	; 0xDA
 _read_reg:	.ds 1	; 0xDB
 _clock_reg:	.ds 2	; 0xDC
 _write_ptr:	.ds 2	; 0xDE
 _write_buf:	.ds 32	; 0xE0
 _write_end = .	; 0x100
+
+YIELD_EXIT = 0
+YIELD_FLUSH = 1
+YIELD_BREAK = 2
 
 	.org 	0x00
 	; if yield flag is not 0, resume from previous halt
@@ -39,13 +44,19 @@ _yield::
 	; TODO 4 unused bytes here
 
 	.org	0x10
+; void break()
+_break::
+	ld	(_stack_ptr), SP
+	push	BC
+	push	DE
+	jr	break_ext
 
 	.org	0x18
 ; uint16_t millis() __sdcccall(1)
 ; return uint16 in DE
 _millis::
 	; call yield(1) to get fresh millis from Arduino
-	ld	A, #1
+	ld	A, #YIELD_FLUSH
 	rst	0x08
 	ld	DE, (_clock_reg)
 	ret
@@ -62,7 +73,7 @@ _getchar::
 	inc	A
 	jr	NZ, skip_flush
 	; { yield(1) }
-	ld	A, #1
+	ld	A, #YIELD_FLUSH
 	rst	0x08
 
 skip_flush:
@@ -91,8 +102,24 @@ _putchar::
 	cp	L
 	ret	NZ
 	; else yield(1)
-	ld	A, #1
+	ld	A, #YIELD_FLUSH
 	jr	_yield
+
+; continued from _break reset vector above
+break_ext:
+	push	HL
+	push	AF
+	push	IX
+	push	IY
+	ld	A, #YIELD_BREAK
+	rst	0x08
+	pop	IY
+	pop	IX
+	pop	AF
+	pop	HL
+	pop	DE
+	pop	BC
+	ret
 
 ; void putstr(char* out) __sdcccall(1)
 ; char* out in HL
