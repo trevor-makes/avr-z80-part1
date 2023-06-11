@@ -218,12 +218,15 @@ void bios_loop() {
       uint16_t hl = Bus::read_bus(sp - 6) | (Bus::read_bus(sp - 5) << 8);
       uint8_t a = Bus::read_bus(sp - 7);
       uint8_t f = Bus::read_bus(sp - 8);
-      uint16_t ix = Bus::read_bus(sp - 10) | (Bus::read_bus(sp - 9) << 8);
-      uint16_t iy = Bus::read_bus(sp - 12) | (Bus::read_bus(sp - 11) << 8);
+      uint16_t bc2 = Bus::read_bus(sp - 10) | (Bus::read_bus(sp - 9) << 8);
+      uint16_t de2 = Bus::read_bus(sp - 12) | (Bus::read_bus(sp - 11) << 8);
+      uint16_t hl2 = Bus::read_bus(sp - 14) | (Bus::read_bus(sp - 13) << 8);
+      uint8_t a2 = Bus::read_bus(sp - 15);
+      uint8_t f2 = Bus::read_bus(sp - 16);
+      uint16_t ix = Bus::read_bus(sp - 18) | (Bus::read_bus(sp - 17) << 8);
+      uint16_t iy = Bus::read_bus(sp - 20) | (Bus::read_bus(sp - 19) << 8);
       // Print registers
-      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   IX   IY"));
-      // TODO handle alternate registers
-      //serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
+      serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
       auto print = [](char c){serialEx.print(c);};
       core::mon::format_hex16(print, pc); print(' ');
       core::mon::format_hex16(print, sp + 2); print(' ');
@@ -232,6 +235,11 @@ void bios_loop() {
       core::mon::format_hex16(print, hl); print(' ');
       core::mon::format_hex16(print, bc); print(' ');
       core::mon::format_hex16(print, de); print(' ');
+      core::mon::format_bin8(print, f2); print(' ');
+      core::mon::format_hex8(print, a2); print(' ');
+      core::mon::format_hex16(print, hl2); print(' ');
+      core::mon::format_hex16(print, bc2); print(' ');
+      core::mon::format_hex16(print, de2); print(' ');
       core::mon::format_hex16(print, ix); print(' ');
       core::mon::format_hex16(print, iy); print(' ');
       serialEx.println();

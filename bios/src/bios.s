@@ -109,12 +109,28 @@ _putchar::
 break_ext:
 	push	HL
 	push	AF
+	exx
+	ex	AF, AF'
+	push	BC
+	push	DE
+	push	HL
+	push	AF
+	exx
+	ex	AF, AF'
 	push	IX
 	push	IY
 	ld	A, #YIELD_BREAK
 	rst	0x08
 	pop	IY
 	pop	IX
+	exx
+	ex	AF, AF'
+	pop	AF
+	pop	HL
+	pop	DE
+	pop	BC
+	exx
+	ex	AF, AF'
 	pop	AF
 	pop	HL
 	pop	DE
