@@ -1,5 +1,5 @@
 .PHONY: all
-all: bios.ihx example.ihx randbcd.ihx
+all: bios.ihx example.ihx randbcd.ihx break_test.ihx
 
 bios.ihx: bin/bios.rel
 	sdldz80 -n -i $@ $^
