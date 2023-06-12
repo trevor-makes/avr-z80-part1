@@ -64,6 +64,7 @@ _break::
 ; char out in A
 _putchar::
 	; *write_ptr++ = out
+	push	HL
 	ld	HL, (_write_ptr)
 	ld	(HL), A
 	inc	HL
@@ -74,6 +75,7 @@ _putchar::
 	; TODO assert write_end-write_buf <= 256
 	ld	A, #<_write_end
 	cp	L
+	pop	HL
 	ret	NZ
 	; else yield(1)
 	ld	A, #YIELD_FLUSH
@@ -126,9 +128,7 @@ _putstr::
 	ret	Z
 
 	; putchar(*out++)
-	push	HL
 	rst 0x38 ; call	_putchar
-	pop HL
 	inc HL
 
 	jr	_putstr
@@ -146,7 +146,6 @@ _putbcd::
 	rst 0x38 ; call _putchar
 
 	; putchar('0' | tmp & 0xf)
-	ld	HL, #bcdtmp
 	ld	A, #'0' ; 0x30
 	rld
 	rst 0x38 ; call _putchar
