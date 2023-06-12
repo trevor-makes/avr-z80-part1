@@ -56,8 +56,28 @@ _break::
 	.org	0x20
 
 	.org	0x28
+; void putbcd(uint8_t out) __sdcccall(1)
+; uint8 out in A
+_putbcd::
+	; tmp = out
+	ld	HL, #bcdtmp
+	ld	(HL), A
+	; putchar('0' | tmp >> 4)
+	ld	A, #'0' ; 0x30
+	jr	putbcd_ext
 
 	.org	0x30
+; void putstr(char* out) __sdcccall(1)
+; char* out in HL
+_putstr::
+	; while (*out != 0)
+	ld	A, (HL)
+	or	A
+	ret	Z
+	; putchar(*out++)
+	rst 0x38 ; call	_putchar
+	inc HL
+	jr	_putstr
 
 	.org	0x38
 ; void putchar(char out) __sdcccall(1)
@@ -69,7 +89,6 @@ _putchar::
 	ld	(HL), A
 	inc	HL
 	ld	(_write_ptr), HL
-
 	; if (write_ptr != write_end) return
 	; NOTE just comparing low byte since buf size is less than 256
 	; TODO assert write_end-write_buf <= 256
@@ -85,7 +104,6 @@ _putchar::
 ; return char in A
 _getchar::
 	ld	HL, #_read_reg
-
 	; if (read_reg == -1)
 	ld	A, (HL)
 	inc	A
@@ -93,7 +111,6 @@ _getchar::
 	; { yield(1) }
 	ld	A, #YIELD_FLUSH
 	rst	0x08
-
 skip_flush:
 	ld	A, (HL)
 	ld	(HL), #0xFF	; read_reg = -1
@@ -119,38 +136,14 @@ break_ext:
 	pop	AF
 	ret
 
-; void putstr(char* out) __sdcccall(1)
-; char* out in HL
-_putstr::
-	; while (*out != 0)
-	ld	A, (HL)
-	or	A
-	ret	Z
-
-	; putchar(*out++)
-	rst 0x38 ; call	_putchar
-	inc HL
-
-	jr	_putstr
-
-; void putbcd(uint8_t out) __sdcccall(1)
-; uint8 out in A
-_putbcd::
-	; tmp = out
-	ld	HL, #bcdtmp
-	ld	(HL), A
-
+putbcd_ext:
 	; putchar('0' | tmp >> 4)
-	ld	A, #'0' ; 0x30
 	rld
 	rst 0x38 ; call _putchar
-
 	; putchar('0' | tmp & 0xf)
 	ld	A, #'0' ; 0x30
 	rld
-	rst 0x38 ; call _putchar
-
-	ret
+	jr	_putchar
 bcdtmp: .ds 1
 
 ; uint16_t millis() __sdcccall(1)
