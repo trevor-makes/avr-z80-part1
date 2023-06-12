@@ -61,8 +61,10 @@ _break::
 
 	.org	0x18
 
+	; TODO unused reset vector
+
 	.org	0x20
-; print "\e["
+; print ANSI CSI "\e["
 	ld	A, #0x1B
 	rst	0x38
 	ld	A, #'['
@@ -112,20 +114,6 @@ _putchar::
 	; else
 	jr	flush
 
-; char getchar() __sdcccall(1)
-; return char in A
-_getchar::
-	ld	HL, #_read_reg
-	; if (read_reg == -1) flush()
-	ld	A, (HL)
-	inc	A
-	jr	NZ, skip_flush
-	rst	0x08	; flush
-skip_flush:
-	ld	A, (HL)
-	ld	(HL), #0xFF	; read_reg = -1
-	ret
-
 ; continued from _break reset vector
 break_ext:
 	push	BC
@@ -157,20 +145,34 @@ putbcd_ext:
 	jr	_putchar
 bcdtmp: .ds 1
 
+; char getchar() __sdcccall(1)
+; return char in A
+_getchar::
+	ld	HL, #_read_reg
+	; if (read_reg == -1) flush()
+	ld	A, (HL)
+	inc	A
+	jr	NZ, skip_flush
+	rst	0x08	; flush
+skip_flush:
+	ld	A, (HL)
+	ld	(HL), #0xFF	; read_reg = -1
+	ret
+
 ; void hide_cursor()
 _hide_cursor::
 	rst	0x20	; print "\e["
-	ld	HL, #dectceml
+	ld	HL, #dectcem_l
 	jr	_putstr	; putstr("?25l")
-dectceml:
+dectcem_l:
 	.asciz	"?25l"
 
 ; void show_cursor()
 _show_cursor::
 	rst	0x20	; print "\e["
-	ld	HL, #dectcemh
+	ld	HL, #dectcem_h
 	jr	_putstr	; putstr("?25h")
-dectcemh:
+dectcem_h:
 	.asciz	"?25h"
 
 ; void clear_screen()
