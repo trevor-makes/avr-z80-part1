@@ -52,34 +52,8 @@ _break::
 	jr	break_ext
 
 	.org	0x18
-; uint16_t millis() __sdcccall(1)
-; return uint16 in DE
-_millis::
-	; call yield(1) to get fresh millis from Arduino
-	ld	A, #YIELD_FLUSH
-	rst	0x08
-	ld	DE, (_clock_reg)
-	ret
 
 	.org	0x20
-; char getchar() __sdcccall(1)
-; return char in A
-; TODO move out of rst vectors
-_getchar::
-	ld	HL, #_read_reg
-
-	; if (read_reg == -1)
-	ld	A, (HL)
-	inc	A
-	jr	NZ, skip_flush
-	; { yield(1) }
-	ld	A, #YIELD_FLUSH
-	rst	0x08
-
-skip_flush:
-	ld	A, (HL)
-	ld	(HL), #0xFF	; read_reg = -1
-	ret
 
 	.org	0x28
 
@@ -104,6 +78,24 @@ _putchar::
 	; else yield(1)
 	ld	A, #YIELD_FLUSH
 	jr	_yield
+
+; char getchar() __sdcccall(1)
+; return char in A
+_getchar::
+	ld	HL, #_read_reg
+
+	; if (read_reg == -1)
+	ld	A, (HL)
+	inc	A
+	jr	NZ, skip_flush
+	; { yield(1) }
+	ld	A, #YIELD_FLUSH
+	rst	0x08
+
+skip_flush:
+	ld	A, (HL)
+	ld	(HL), #0xFF	; read_reg = -1
+	ret
 
 ; continued from _break reset vector above
 break_ext:
@@ -161,6 +153,15 @@ _putbcd::
 
 	ret
 bcdtmp: .ds 1
+
+; uint16_t millis() __sdcccall(1)
+; return uint16 in DE
+_millis::
+	; call yield(1) to get fresh millis from Arduino
+	ld	A, #YIELD_FLUSH
+	rst	0x08
+	ld	DE, (_clock_reg)
+	ret
 
 ; void srand(uint16_t seed) __z88dk_fastcall
 ; take seed in HL
