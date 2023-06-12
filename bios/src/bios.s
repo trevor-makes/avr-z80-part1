@@ -5,6 +5,12 @@
 	.globl	_putchar
 	.globl	_putstr
 	.globl	_putbcd
+	.globl	_hide_cursor
+	.globl	_show_cursor
+	.globl	_clear_screen
+	.globl	_set_cursor
+	.globl	_erase_chars
+	.globl	_set_rendition
 	.globl	_srand
 	.globl	_rand
 
@@ -54,6 +60,12 @@ _break::
 	.org	0x18
 
 	.org	0x20
+; print "\e["
+	ld	A, #0x1B
+	rst	0x38
+	ld	A, #'['
+	rst	0x38
+	ret
 
 	.org	0x28
 ; void putbcd(uint8_t out) __sdcccall(1)
@@ -116,7 +128,7 @@ skip_flush:
 	ld	(HL), #0xFF	; read_reg = -1
 	ret
 
-; continued from _break reset vector above
+; continued from _break reset vector
 break_ext:
 	push	BC
 	push	DE
@@ -136,6 +148,7 @@ break_ext:
 	pop	AF
 	ret
 
+; continued from _putbcd reset vector
 putbcd_ext:
 	; putchar('0' | tmp >> 4)
 	rld
@@ -145,6 +158,65 @@ putbcd_ext:
 	rld
 	jr	_putchar
 bcdtmp: .ds 1
+
+; void hide_cursor()
+_hide_cursor::
+	rst	0x20	; print "\e["
+	ld	HL, #dectceml
+	jr	_putstr	; putstr("?25l")
+dectceml:
+	.asciz	"?25l"
+
+; void show_cursor()
+_show_cursor::
+	rst	0x20	; print "\e["
+	ld	HL, #dectcemh
+	jr	_putstr	; putstr("?25h")
+dectcemh:
+	.asciz	"?25h"
+
+; void clear_screen()
+_clear_screen::
+	rst	0x20	; print "\e["
+	ld	A, #'2'
+	rst	0x38	; putchar('2')
+	ld	A, #'J'
+	jr	_putchar	; putchar('J')
+
+; void set_cursor(uint8 row, uint8_t col) __sdcccall(1)
+; take row (BCD) in A, col (BCD) in L
+_set_cursor::
+	ld	B, A
+	ld	C, L
+	rst	0x20	; print "\e["
+	ld	A, B
+	rst	0x28	; putbcd(row)
+	ld	A, #';'
+	rst	0x38	; putchar(';')
+	ld	A, C
+	rst	0x28	; putbcd(col)
+	ld	A, #'H'
+	jr	_putchar	; putchar('H')
+
+; void erase_chars(uint8 count) __sdcccall(1)
+; take count (BCD) in A
+_erase_chars::
+	ld	B, A
+	rst	0x20	; print "\e["
+	ld	A, B
+	rst	0x28	; putbcd(count)
+	ld	A, #'X'
+	jr	_putchar	; putchar('X')
+
+; void set_rendition(uint8 attr) __sdcccall(1)
+; take attr (BCD) in A
+_set_rendition::
+	ld	B, A
+	rst	0x20	; print "\e["
+	ld	A, B
+	rst	0x28	; putbcd(attr)
+	ld	A, #'m'
+	jr	_putchar	; putchar('m')
 
 ; uint16_t millis() __sdcccall(1)
 ; return uint16 in DE
@@ -186,7 +258,3 @@ _rand::
 
 	ld (_rand+1),hl
 	ret
-
-; TODO how much other crap can we cram in page 0? priority bcd and rand, maybe draw?
-; TODO what about debug break vector?
-; TODO is it worth wasted padding to align to reset vectors?
