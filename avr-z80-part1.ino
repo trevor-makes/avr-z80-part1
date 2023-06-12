@@ -185,6 +185,8 @@ struct __attribute__((packed)) {
   uint16_t out_ptr;   // 0x00DE
 } registers;
 
+uint16_t millis_offset;
+
 void display_registers() {
   // Read registers pushed on the Z80 stack
   auto print = [](char c){serialEx.print(c);};
@@ -237,6 +239,7 @@ void bios_loop() {
     if (registers.yield_flg == YIELD_EXIT) {
       return;
     } else if (registers.yield_flg == YIELD_BREAK) {
+      millis_offset -= millis();
       display_registers();
       return;
     }
@@ -246,8 +249,8 @@ void bios_loop() {
       registers.read_reg = uint8_t(serialEx.read());
     }
 
-    // TODO pause Z80 time during break so it doesn't jump after resume 
-    registers.clock_reg = millis();
+    // Get fresh millis, minus time elapsed during break
+    registers.clock_reg = millis() - millis_offset;
   }
 }
 
@@ -256,6 +259,7 @@ void run_bios(Args args) {
   registers.yield_flg = YIELD_EXIT;
   registers.read_reg = 0xFF;
   registers.out_ptr = OUT_BUF_ADDR;
+  millis_offset = 0;
   bios_loop();
 }
 
@@ -264,6 +268,7 @@ void resume_bios(Args args) {
     serialEx.println(F("can only resume from break"));
     return;
   }
+  millis_offset += millis();
   bios_loop();
 }
 
@@ -274,6 +279,7 @@ void loop() {
     { "asm", core::mon::z80::cmd_asm<API> },
     { "dasm", core::mon::z80::cmd_dasm<API> },
     { "label", core::mon::cmd_label<API> },
+    // Execute commands
     { "run", run_until_halt },
     { "bios", run_bios },
     { "resume", resume_bios },
