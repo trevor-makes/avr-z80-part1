@@ -30,6 +30,7 @@
 
 	.module init
 	.globl	_main
+	.globl	_yield
 	.globl	_exit
 	.globl	l__DATA
 	.globl	s__DATA
@@ -60,7 +61,7 @@ init:
 	call	_main
 _exit:
 	xor	A	; A = 0
-	rst	0x08	; call _yield
+	jp	_yield
 
 	.area	_GSINIT
 gsinit::

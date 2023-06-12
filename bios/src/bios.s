@@ -41,13 +41,15 @@ YIELD_BREAK = 2
 	jp _init
 
 	.org	0x08
+flush:
+	ld	A, #YIELD_FLUSH
 ; void yield(uint8_t) __sdcccall(1)
 ; takes code (0=exit, 1=flush, 2=break) in A
 _yield::
 	ld	(_yield_flg), A
 	halt
 
-	; TODO 4 unused bytes here
+	; TODO 2 unused bytes here
 
 	.org	0x10
 ; void break()
@@ -64,8 +66,7 @@ _break::
 	ld	A, #0x1B
 	rst	0x38
 	ld	A, #'['
-	rst	0x38
-	ret
+	jr	_putchar
 
 	.org	0x28
 ; void putbcd(uint8_t out) __sdcccall(1)
@@ -108,21 +109,18 @@ _putchar::
 	cp	L
 	pop	HL
 	ret	NZ
-	; else yield(1)
-	ld	A, #YIELD_FLUSH
-	jr	_yield
+	; else
+	jr	flush
 
 ; char getchar() __sdcccall(1)
 ; return char in A
 _getchar::
 	ld	HL, #_read_reg
-	; if (read_reg == -1)
+	; if (read_reg == -1) flush()
 	ld	A, (HL)
 	inc	A
 	jr	NZ, skip_flush
-	; { yield(1) }
-	ld	A, #YIELD_FLUSH
-	rst	0x08
+	rst	0x08	; flush
 skip_flush:
 	ld	A, (HL)
 	ld	(HL), #0xFF	; read_reg = -1
@@ -143,7 +141,7 @@ break_ext:
 	push	IX
 	push	IY
 	ld	A, #YIELD_BREAK
-	rst	0x08
+	call	_yield
 	ld	SP, (_stack_ptr)
 	pop	AF
 	ret
@@ -221,9 +219,8 @@ _set_rendition::
 ; uint16_t millis() __sdcccall(1)
 ; return uint16 in DE
 _millis::
-	; call yield(1) to get fresh millis from Arduino
-	ld	A, #YIELD_FLUSH
-	rst	0x08
+	; flush to get fresh millis from Arduino
+	rst	0x08	; flush
 	ld	DE, (_clock_reg)
 	ret
 

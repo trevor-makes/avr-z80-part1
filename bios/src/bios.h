@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-// TODO make this an inline xor A/rst 8?
-void exit();
+// Terminate Z80 program
+_Noreturn void exit();
 
 // Return elapsed time in milliseconds
 uint16_t millis() __sdcccall(1);
