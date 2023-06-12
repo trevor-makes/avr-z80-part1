@@ -241,6 +241,7 @@ void bios_loop() {
     } else if (registers.yield_flg == YIELD_BREAK) {
       millis_offset -= millis();
       display_registers();
+      serialCli.prefix("resume");
       return;
     }
 
@@ -274,25 +275,25 @@ void resume_bios(Args args) {
 
 void loop() {
   static const core::cli::Command commands[] = {
-    { "baud", set_baud },
+    { F("baud"), set_baud },
     // Assembler commands
-    { "asm", core::mon::z80::cmd_asm<API> },
-    { "dasm", core::mon::z80::cmd_dasm<API> },
-    { "label", core::mon::cmd_label<API> },
+    { F("asm"), core::mon::z80::cmd_asm<API> },
+    { F("dasm"), core::mon::z80::cmd_dasm<API> },
+    { F("label"), core::mon::cmd_label<API> },
     // Execute commands
-    { "run", run_until_halt },
-    { "bios", run_bios },
-    { "resume", resume_bios },
+    { F("run"), run_until_halt },
+    { F("bios"), run_bios },
+    { F("resume"), resume_bios },
     // Memory monitor commands
-    { "hex", core::mon::cmd_hex<API> },
-    { "set", core::mon::cmd_set<API> },
-    { "fill", core::mon::cmd_fill<API> },
-    { "move", core::mon::cmd_move<API> },
+    { F("hex"), core::mon::cmd_hex<API> },
+    { F("set"), core::mon::cmd_set<API> },
+    { F("fill"), core::mon::cmd_fill<API> },
+    { F("move"), core::mon::cmd_move<API> },
     // Memory transfer commands
-    { "export", core::mon::cmd_export<API> },
-    { "import", core::mon::cmd_import<API> },
-    { "verify", core::mon::cmd_verify<API> },
+    { F("export"), core::mon::cmd_export<API> },
+    { F("import"), core::mon::cmd_import<API> },
+    { F("verify"), core::mon::cmd_verify<API> },
   };
 
-  serialCli.run_once(commands);
+  serialCli.prompt(commands);
 }
