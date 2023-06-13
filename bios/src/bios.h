@@ -49,6 +49,16 @@ void srand(uint16_t seed) __sdcccall(1);
 // NOTE using z88dk_fastcall to return in HL instead of DE
 uint16_t rand() __z88dk_fastcall;
 
+enum KEY {
+  KEY_UP    = 0xF8,
+  KEY_DOWN  = 0xF9,
+  KEY_RIGHT = 0xFA,
+  KEY_LEFT  = 0xFB,
+  KEY_END   = 0xFC,
+  KEY_HOME  = 0xFD,
+  KEY_NONE  = 0xFF,
+};
+
 // Attributes for set_rendition
 enum SGR {
   SGR_RESET  = 0x00,
