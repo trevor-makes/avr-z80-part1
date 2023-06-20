@@ -114,6 +114,10 @@ struct Bus : PortBus<AddressPort, DataPort, ReadEnable, WriteEnable> {
     ReadEnable::disable();
     return data;
   }
+
+  static uint16_t read16(ADDRESS_TYPE addr) {
+    return read_bus(addr) | (read_bus(addr + 1) << 8);
+  }
 };
 
 using core::serial::StreamEx;
@@ -191,21 +195,21 @@ void display_registers() {
   // Read registers pushed on the Z80 stack
   auto print = [](char c){serialEx.print(c);};
   serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
-  uint16_t sp = Bus::read_bus(STACK_ADDR) | (Bus::read_bus(STACK_ADDR + 1) << 8);
-  core::mon::format_hex16(print, Bus::read_bus(sp + 3) << 8 | Bus::read_bus(sp + 2)); print(' '); // PC
+  uint16_t sp = Bus::read16(STACK_ADDR);
+  core::mon::format_hex16(print, Bus::read16(sp + 2)); print(' '); // PC
   core::mon::format_hex16(print, sp + 4); print(' '); // SP
   core::mon::format_bin8(print, Bus::read_bus(sp)); print(' '); // F
   core::mon::format_hex8(print, Bus::read_bus(sp + 1)); print(' '); // A
-  core::mon::format_hex16(print, Bus::read_bus(sp - 1) << 8 | Bus::read_bus(sp - 2)); print(' '); // HL
-  core::mon::format_hex16(print, Bus::read_bus(sp - 3) << 8 | Bus::read_bus(sp - 4)); print(' '); // BC
-  core::mon::format_hex16(print, Bus::read_bus(sp - 5) << 8 | Bus::read_bus(sp - 6)); print(' '); // DE
+  core::mon::format_hex16(print, Bus::read16(sp - 2)); print(' '); // HL
+  core::mon::format_hex16(print, Bus::read16(sp - 4)); print(' '); // BC
+  core::mon::format_hex16(print, Bus::read16(sp - 6)); print(' '); // DE
   core::mon::format_bin8(print, Bus::read_bus(sp - 8)); print(' '); // F'
   core::mon::format_hex8(print, Bus::read_bus(sp - 7)); print(' '); // A'
-  core::mon::format_hex16(print, Bus::read_bus(sp - 9) << 8 | Bus::read_bus(sp - 10)); print(' '); // HL'
-  core::mon::format_hex16(print, Bus::read_bus(sp - 11) << 8 | Bus::read_bus(sp - 12)); print(' '); // BC'
-  core::mon::format_hex16(print, Bus::read_bus(sp - 13) << 8 | Bus::read_bus(sp - 14)); print(' '); // DE'
-  core::mon::format_hex16(print, Bus::read_bus(sp - 15) << 8 | Bus::read_bus(sp - 16)); print(' '); // IX
-  core::mon::format_hex16(print, Bus::read_bus(sp - 17) << 8 | Bus::read_bus(sp - 18)); // IY
+  core::mon::format_hex16(print, Bus::read16(sp - 10)); print(' '); // HL'
+  core::mon::format_hex16(print, Bus::read16(sp - 12)); print(' '); // BC'
+  core::mon::format_hex16(print, Bus::read16(sp - 14)); print(' '); // DE'
+  core::mon::format_hex16(print, Bus::read16(sp - 16)); print(' '); // IX
+  core::mon::format_hex16(print, Bus::read16(sp - 18)); // IY
   serialEx.println();
 }
 
