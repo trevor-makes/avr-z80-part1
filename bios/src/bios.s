@@ -21,20 +21,20 @@ _init = 0x100 ; defined in crt0
 	.org	0xD8
 ; memory locations shared between Arduino and Z80
 _stack_ptr:	.ds 2	; 0xD8
-_yield_flg:	.ds 1	; 0xDA
+_yield_reg:	.ds 1	; 0xDA
 _read_reg:	.ds 1	; 0xDB
 _clock_reg:	.ds 2	; 0xDC
 _write_ptr:	.ds 2	; 0xDE
 _write_buf:	.ds 32	; 0xE0
 _write_end = .	; 0x100
 
-YIELD_EXIT = 0
+YIELD_RESET = 0
 YIELD_FLUSH = 1
 YIELD_BREAK = 2
 
 	.org 	0x00
 	; if yield flag is not 0, resume from previous halt
-	ld	A, (_yield_flg)
+	ld	A, (_yield_reg)
 	or	A
 	ret	NZ
 	; otherwise jump to init vector
@@ -46,7 +46,7 @@ flush:
 ; void yield(uint8_t) __sdcccall(1)
 ; takes code (0=exit, 1=flush, 2=break) in A
 _yield::
-	ld	(_yield_flg), A
+	ld	(_yield_reg), A
 	halt
 
 	; TODO 2 unused bytes here

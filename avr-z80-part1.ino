@@ -174,12 +174,12 @@ const uint16_t STACK_ADDR = 0x00D8;
 const uint16_t REGISTERS_ADDR = 0x00DA;
 const uint16_t OUT_BUF_ADDR   = 0x00E0;
 
-const uint8_t YIELD_EXIT = 0;
+const uint8_t YIELD_RESET = 0;
 const uint8_t YIELD_FLUSH = 1;
 const uint8_t YIELD_BREAK = 2;
 
 struct __attribute__((packed)) {
-  uint8_t yield_flg;  // 0x00DA
+  uint8_t yield_reg;  // 0x00DA
   uint8_t read_reg;   // 0x00DB
   uint16_t clock_reg; // 0x00DC
   uint16_t out_ptr;   // 0x00DE
@@ -236,9 +236,9 @@ void bios_loop() {
     registers.out_ptr = OUT_BUF_ADDR;
 
     // Exit when yield parameter is exit or break
-    if (registers.yield_flg == YIELD_EXIT) {
+    if (registers.yield_reg == YIELD_RESET) {
       return;
-    } else if (registers.yield_flg == YIELD_BREAK) {
+    } else if (registers.yield_reg == YIELD_BREAK) {
       millis_offset -= millis();
       display_registers();
       serialCli.prefix("resume");
@@ -257,7 +257,7 @@ void bios_loop() {
 
 void run_bios(Args args) {
   // Reset BIOS registers
-  registers.yield_flg = YIELD_EXIT;
+  registers.yield_reg = YIELD_RESET;
   registers.read_reg = 0xFF;
   registers.out_ptr = OUT_BUF_ADDR;
   millis_offset = 0;
@@ -265,7 +265,7 @@ void run_bios(Args args) {
 }
 
 void resume_bios(Args args) {
-  if (registers.yield_flg != YIELD_BREAK) {
+  if (registers.yield_reg != YIELD_BREAK) {
     serialEx.println(F("can only resume from break"));
     return;
   }
