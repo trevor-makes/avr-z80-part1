@@ -1,16 +1,20 @@
-.PHONY: all
-all: bios.ihx example.ihx randbcd.ihx break_test.ihx worm.ihx
+BIN = bios.ihx example.ihx randbcd.ihx break_test.ihx worm.ihx
 
-bios.ihx: bin/bios.rel
+.PHONY: all
+all: $(addprefix bin/, $(BIN))
+
+bin/bios.ihx: build/bios.rel
+	mkdir -p $(@D)
 	sdldz80 -n -i $@ $^
 
-%.ihx: bin/bios.rel bin/init.rel bin/%.rel
+bin/%.ihx: build/bios.rel build/init.rel build/%.rel
+	mkdir -p $(@D)
 	sdldz80 -nmw -b _CODE=0x100 -i $@ $^
 
-bin/%.rel: src/%.s
+build/%.rel: src/%.s
 	mkdir -p $(@D)
 	sdasz80 -ol $@ $<
 
-bin/%.rel: src/%.c
+build/%.rel: src/%.c
 	mkdir -p $(@D)
 	sdcc -mz80 -o $@ -c $<

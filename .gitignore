@@ -1,6 +1,7 @@
 .DS_Store
 .pio
 .vscode
+bios/build
 bios/bin
 *.map
 *.ihx
