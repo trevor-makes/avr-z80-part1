@@ -118,6 +118,11 @@ struct Bus : PortBus<AddressPort, DataPort, ReadEnable, WriteEnable> {
   static uint16_t read16(ADDRESS_TYPE addr) {
     return read_bus(addr) | (read_bus(addr + 1) << 8);
   }
+
+  static void write16(ADDRESS_TYPE addr, uint16_t data) {
+    write_bus(addr, data & 0xFF);
+    write_bus(addr + 1, data >> 8);
+  }
 };
 
 using core::serial::StreamEx;
@@ -174,28 +179,26 @@ void run_until_halt(Args args) {
 }
 
 // I/O register memory map
-const uint16_t STACK_ADDR = 0x00D8;
-const uint16_t REGISTERS_ADDR = 0x00DA;
-const uint16_t OUT_BUF_ADDR   = 0x00E0;
+const uint16_t STACK_PTR_ADDR = 0x00D8;
+const uint16_t YIELD_REG_ADDR = 0x00DA;
+const uint16_t READ_REG_ADDR  = 0x00DB;
+const uint16_t CLOCK_REG_ADDR = 0x00DC;
+const uint16_t WRITE_PTR_ADDR = 0x00DE;
+const uint16_t WRITE_BUF_ADDR = 0x00E0;
 
 const uint8_t YIELD_RESET = 0;
 const uint8_t YIELD_FLUSH = 1;
 const uint8_t YIELD_BREAK = 2;
 
-struct __attribute__((packed)) {
-  uint8_t yield_reg;  // 0x00DA
-  uint8_t read_reg;   // 0x00DB
-  uint16_t clock_reg; // 0x00DC
-  uint16_t out_ptr;   // 0x00DE
-} registers;
-
+uint8_t yield_reg;
+uint8_t read_reg;
 uint16_t millis_offset;
 
 void display_registers() {
   // Read registers pushed on the Z80 stack
   auto print = [](char c){serialEx.print(c);};
   serialEx.println(F("PC   SP   SZ-H-VNC A  HL   BC   DE   SZ-H-VNC A' HL'  BC'  DE'  IX   IY"));
-  uint16_t sp = Bus::read16(STACK_ADDR);
+  uint16_t sp = Bus::read16(STACK_PTR_ADDR);
   core::mon::format_hex16(print, Bus::read16(sp + 2)); print(' '); // PC
   core::mon::format_hex16(print, sp + 4); print(' '); // SP
   core::mon::format_bin8(print, Bus::read_bus(sp)); print(' '); // F
@@ -217,9 +220,12 @@ void bios_loop() {
   for (;;) {
     // Write I/O registers
     Bus::config_write();
-    for (uint8_t i = 0; i < sizeof(registers); ++i) {
-      Bus::write_bus(REGISTERS_ADDR + i, ((uint8_t*)&registers)[i]);
+    Bus::write_bus(YIELD_REG_ADDR, yield_reg);
+    Bus::write16(WRITE_PTR_ADDR, WRITE_BUF_ADDR);
+    if (read_reg == 0xFF) {
+      Bus::write_bus(READ_REG_ADDR, serialEx.read());
     }
+    Bus::write16(CLOCK_REG_ADDR, millis() - millis_offset);
     Bus::flush_write();
 
     // Run Z80 and wait for HALT
@@ -227,49 +233,38 @@ void bios_loop() {
 
     // Read I/O registers
     Bus::config_read();
-    for (uint8_t i = 0; i < sizeof(registers); ++i) {
-      ((uint8_t*)&registers)[i] = Bus::read_bus(REGISTERS_ADDR + i);
-    }
+    yield_reg = Bus::read_bus(YIELD_REG_ADDR);
+    read_reg = Bus::read_bus(READ_REG_ADDR);
+    uint16_t write_ptr = Bus::read16(WRITE_PTR_ADDR);
 
     // Flush output buffer
-    for (uint16_t ptr = OUT_BUF_ADDR; ptr < registers.out_ptr; ++ptr) {
+    for (uint16_t ptr = WRITE_BUF_ADDR; ptr < write_ptr; ++ptr) {
       uint8_t c = Bus::read_bus(ptr);
       if (c == '\n') serialEx.write('\r'); // LF -> CRLF
       serialEx.write(c);
     }
-    registers.out_ptr = OUT_BUF_ADDR;
 
     // Exit when yield parameter is exit or break
-    if (registers.yield_reg == YIELD_RESET) {
+    if (yield_reg == YIELD_RESET) {
       return;
-    } else if (registers.yield_reg == YIELD_BREAK) {
+    } else if (yield_reg == YIELD_BREAK) {
       millis_offset -= millis();
       display_registers();
       serialCli.prefix("resume");
       return;
     }
-
-    // Read input character
-    if (registers.read_reg == 0xFF) {
-      registers.read_reg = uint8_t(serialEx.read());
-    }
-
-    // Get fresh millis, minus time elapsed during break
-    registers.clock_reg = millis() - millis_offset;
   }
 }
 
 void run_bios(Args args) {
-  // Reset BIOS registers
-  registers.yield_reg = YIELD_RESET;
-  registers.read_reg = 0xFF;
-  registers.out_ptr = OUT_BUF_ADDR;
+  yield_reg = YIELD_RESET;
+  read_reg = 0xFF;
   millis_offset = 0;
   bios_loop();
 }
 
 void resume_bios(Args args) {
-  if (registers.yield_reg != YIELD_BREAK) {
+  if (yield_reg != YIELD_BREAK) {
     serialEx.println(F("can only resume from break"));
     return;
   }
